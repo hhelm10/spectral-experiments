@@ -64,7 +64,10 @@ A     = nx.to_numpy_array(G)
 X_hat = AdjacencySpectralEmbed(algorithm='full').fit_transform(A)
 X_hat = np.column_stack(X_hat)
 
-X_bre = LaplacianSpectralEmbed(form='DAD', algorithm='full').fit_transform(A)
+D_left = np.diag(np.sqrt(1/np.sum(A, axis=0)))
+D_right = np.diag(np.sqrt(1/np.sum(A, axis=1)))
+
+X_bre = AdjacencySpectralEmbed(algorithm='full').fit_transform(D_left @ A @ D_right)
 X_bre = np.column_stack(X_bre)
 
 embeddings = [X_hat, X_bre]
