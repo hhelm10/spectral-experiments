@@ -15,6 +15,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 
 from graspy.embed import AdjacencySpectralEmbed
+from graspy.embed import LaplacianSpectralEmbed
 
 # --
 # Helpers
@@ -63,26 +64,32 @@ A     = nx.to_numpy_array(G)
 X_hat = AdjacencySpectralEmbed(algorithm='full').fit_transform(A)
 X_hat = np.column_stack(X_hat)
 
+X_bre = LaplacianSpectralEmbed(form='DAD', algorithm='full').fit_transform(A)
+X_bre = np.column_stack(X_bre)
+
+embeddings = [X_hat, X_bre]
+
 # --
 # Train classifiers
 
-scores = np.zeros((n_class, args.n_iters))
+scores = np.zeros((len(embeddings), n_class, args.n_iters))
 
 for label_idx, label in enumerate(tqdm(ulabels)):
     for iter_idx in range(args.n_iters):
+        for embed_idx, X_t in enumerate(embeddings):
         
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_hat,
-            y == label,
-            train_size=args.p_train,
-            test_size=1 - args.p_train
-        )
-        
-        model = BaggingClassifier(DecisionTreeClassifier())
-        model = model.fit(X_train, y_train)
-        y_hat = model.predict(X_test)
-        
-        scores[label_idx,iter_idx] = metrics.f1_score(y_test, y_hat, average='binary')
+            X_train, X_test, y_train, y_test = train_test_split(
+                X_t,
+                y == label,
+                train_size=args.p_train,
+                test_size=1 - args.p_train
+            )
+
+            model = BaggingClassifier(DecisionTreeClassifier())
+            model = model.fit(X_train, y_train)
+            y_hat = model.predict(X_test)
+
+            scores[embed_idx, label_idx,iter_idx] = metrics.f1_score(y_test, y_hat, average='binary')
 
 
 print('f1.mean', scores.mean(axis=-1))
